@@ -1,0 +1,15 @@
+model:
+  features_extractor:
+    latent_dim: 2048
+    weights: "path/to/best_features_extractor.pt"
+  project_head:
+    latent_dim: 2048
+    projection_dim: 128
+
+dataset:
+  name: "rxrx1"
+  download: False
+
+hyper_parameters:
+  batch_size: 128
+  num_workers: 8
