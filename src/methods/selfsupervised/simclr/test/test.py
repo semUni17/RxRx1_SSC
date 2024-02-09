@@ -4,7 +4,7 @@ import torch
 from torchvision.transforms import *
 
 from wilds import get_dataset
-from wilds.common.data_loaders import get_train_loader
+from wilds.common.data_loaders import get_eval_loader
 
 from src.methods.selfsupervised.simclr.utils.tsne_visualization import TSNEVisualization
 
@@ -23,6 +23,9 @@ class Test:
         self.eval_dataset = None
         self.eval_dataloader = None
         self.model = None
+
+        self.labels = []
+        self.embedding = []
 
         self.initialize()
 
@@ -58,7 +61,7 @@ class Test:
         )
 
     def define_dataloader(self):
-        self.eval_dataloader = get_train_loader(
+        self.eval_dataloader = get_eval_loader(
             "standard",
             dataset=self.eval_dataset,
             batch_size=self.config["hyper_parameters"]["batch_size"],
@@ -88,4 +91,8 @@ class Test:
                 embedding = self.model.encode(image)
                 embedding = embedding.cpu().data
                 labels = metadata[:, 0]
-                tsne_visualization.visualize(embedding, labels)
+                self.labels.append(labels)
+                self.embedding.append(embedding)
+        self.labels = torch.cat(self.labels, dim=0)
+        self.embedding = torch.cat(self.embedding, dim=0)
+        tsne_visualization.visualize(self.embedding, self.labels)

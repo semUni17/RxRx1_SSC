@@ -4,7 +4,7 @@ import torch
 from torchvision.transforms import *
 
 from wilds import get_dataset
-from wilds.common.data_loaders import get_train_loader
+from wilds.common.data_loaders import get_eval_loader
 
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
@@ -51,19 +51,19 @@ class Test:
         ])
 
     def define_dataset(self):
-        dataset = get_dataset(
+        self.dataset = get_dataset(
             dataset=self.config["dataset"]["name"],
             download=self.config["dataset"]["download"]
         )
-        self.train_dataset = dataset.get_subset(
+        self.eval_dataset = self.dataset.get_subset(
             split="val",
             transform=self.data_augmentation,
         )
 
     def define_dataloader(self):
-        self.train_dataloader = get_train_loader(
+        self.eval_dataloader = get_eval_loader(
             "standard",
-            dataset=self.train_dataset,
+            dataset=self.eval_dataset,
             batch_size=self.config["hyper_parameters"]["batch_size"],
             num_workers=self.config["hyper_parameters"]["num_workers"]
         )
@@ -84,8 +84,9 @@ class Test:
     def test(self):
         total = 0
         correct = 0
+        self.metadata = []
         with torch.no_grad():
-            for iteration, labeled_batch in enumerate(zip(self.train_dataloader)):
+            for iteration, labeled_batch in enumerate(zip(self.eval_dataloader)):
                 images, y, metadata = labeled_batch[0]
                 images = images.to(self.device).to(torch.float32)
                 labels = metadata[:, 0].to(self.device)
@@ -100,6 +101,9 @@ class Test:
 
                 self.labels += labels.cpu()
                 self.predictions += predictions.cpu()
+                self.metadata += metadata
+                # print(predictions.size(), labels.size(), metadata.size())
+                # self.dataset.eval(predictions, labels, metadata)
             self.confusion_matrix()
 
     def confusion_matrix(self):
