@@ -7,13 +7,12 @@ import cv2
 
 
 class SimCLR(nn.Module):
-    def __init__(self, features_extractor, projection_head, dist=None):
+    def __init__(self, features_extractor, projection_head, temperature=0.5, dist=None):
         super().__init__()
         self.features_extractor = features_extractor
         self.projection_head = projection_head
+        self.temperature = temperature
         self.dist = dist
-
-        self.temperature = 0.5
 
         self.initialize()
 
@@ -29,7 +28,7 @@ class SimCLR(nn.Module):
         z = F.normalize(z)
         return z
 
-    def loss(self, n, z_i, z_j):
+    def infonce_loss(self, n, z_i, z_j):
         if self.dist is None:
             zis = [z_i]
             zjs = [z_j]
@@ -64,19 +63,19 @@ class SimCLR(nn.Module):
         h_i, h_j = self.encode(x_i), self.encode(x_j)
         z_i, z_j = self.project(h_i), self.project(h_j)
 
-        loss = self.loss(n, z_i, z_j)
+        loss = self.infonce_loss(n, z_i, z_j)
 
-        '''xi_0 = xi[0].detach().cpu().numpy().transpose(1, 2, 0)
-        xi_1 = xi[1].detach().cpu().numpy().transpose(1, 2, 0)
+        '''xi_0 = x_i[0].detach().cpu().numpy().transpose(1, 2, 0)
+        xi_1 = x_i[1].detach().cpu().numpy().transpose(1, 2, 0)
         xi_aug = np.concatenate((xi_0, xi_1), axis=1)
         # cv2.imshow("xi_aug", xi_aug)
-        xj_0 = xj[0].detach().cpu().numpy().transpose(1, 2, 0)
-        xj_1 = xj[1].detach().cpu().numpy().transpose(1, 2, 0)
+        xj_0 = x_j[0].detach().cpu().numpy().transpose(1, 2, 0)
+        xj_1 = x_j[1].detach().cpu().numpy().transpose(1, 2, 0)
         xj_aug = np.concatenate((xj_0, xj_1), axis=1)
         # cv2.imshow("xj_aug", xj_aug)
         total = np.concatenate((xi_aug, xj_aug), axis=0)
         cv2.imshow("total", total)
-        cv2.waitKey()'''
+        cv2.waitKey(500)'''
 
         return loss
 

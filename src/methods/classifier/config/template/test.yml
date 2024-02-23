@@ -9,6 +9,8 @@ model:
 dataset:
   name: "rxrx1"
   download: False
+  split: "val"
+  fraction: 1.0
 
 hyper_parameters:
   batch_size: 128

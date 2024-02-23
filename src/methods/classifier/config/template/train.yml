@@ -4,12 +4,14 @@ model:
     weights: "path/to/best_features_extractor.pt"
   classifier:
     n_classes: 4
-    weights: None
+    weights: null
     save_path: "path/to/best_classifier.pt"
 
 dataset:
   name: "rxrx1"
   download: False
+  split: "train"
+  fraction: 1.0
 
 hyper_parameters:
   batch_size: 16

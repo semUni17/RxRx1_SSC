@@ -8,10 +8,11 @@ from torch.cuda.amp import GradScaler
 from wilds import get_dataset
 from wilds.common.data_loaders import get_train_loader
 
-from src.methods.selfsupervised.simclr.dataaugmentation.data_augmentation import DataAugmentation
 from src.methods.classifier.model.features_extractor import FeaturesExtractor
 from src.methods.selfsupervised.simclr.model.projection_head import ProjectionHead
 from src.methods.selfsupervised.simclr.model.simclr import SimCLR
+from src.methods.selfsupervised.simclr.dataaugmentation.multi_view_generator import MultiViewGenerator
+from src.utils.dataaugmentation.self_standardization import SelfStandardization
 
 
 class Train:
@@ -20,7 +21,7 @@ class Train:
 
         self.config = None
         self.device = None
-        self.data_augmentation = None
+        self.transform = None
         self.train_dataset = None
         self.train_dataloader = None
         self.model = None
@@ -48,16 +49,24 @@ class Train:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def define_transform(self):
-        scaler = self.config["data_augmentation"]["scaler"]
-        size = self.config["data_augmentation"]["size"]
-        self.data_augmentation = Compose([
+        size = self.config["data_augmentation"]["general"]["size"]
+        scaler = self.config["data_augmentation"]["color_jitter"]["scaler"]
+
+        color_jitter = ColorJitter(0.8*scaler, 0.8*scaler, 0.8*scaler, 0.2*scaler)
+        gaussian_blur = GaussianBlur(kernel_size=self.config["data_augmentation"]["gaussian_blur"]["kernel_size"])
+
+        self.transform = Compose([
+            ToTensor(),
             Resize(size=size),
             RandomResizedCrop(size=size),
+            RandomErasing(scale=self.config["data_augmentation"]["erasing"]["scale"]),
+            RandomRotation(degrees=self.config["data_augmentation"]["rotation"]["degrees"]),
             RandomHorizontalFlip(),
-            RandomApply([transforms.ColorJitter(0.8*scaler, 0.8*scaler, 0.8*scaler, 0.2*scaler)], p=0.8),
-            RandomGrayscale(p=0.2),
-            GaussianBlur(kernel_size=self.config["data_augmentation"]["kernel_size"]),
-            ToTensor()
+            RandomVerticalFlip(),
+            RandomApply([color_jitter], p=self.config["data_augmentation"]["color_jitter"]["probability"]),
+            RandomApply([gaussian_blur], p=self.config["data_augmentation"]["gaussian_blur"]["probability"]),
+            RandomGrayscale(p=self.config["data_augmentation"]["grayscale"]["probability"]),
+            SelfStandardization()
         ])
 
     def define_dataset(self):
@@ -66,8 +75,9 @@ class Train:
             download=self.config["dataset"]["download"]
         )
         self.train_dataset = dataset.get_subset(
-            split="train",
-            transform=DataAugmentation(self.data_augmentation),
+            split=self.config["dataset"]["split"],
+            frac=self.config["dataset"]["fraction"],
+            transform=MultiViewGenerator(self.transform),
         )
 
     def define_dataloader(self):
@@ -87,7 +97,7 @@ class Train:
             latent_dim=self.config["model"]["project_head"]["latent_dim"],
             projection_dim=self.config["model"]["project_head"]["projection_dim"],
         )
-        self.model = SimCLR(features_extractor, projection_head)
+        self.model = SimCLR(features_extractor, projection_head, self.config["hyper_parameters"]["temperature"])
         self.model.to(self.device)
         self.model.train()
 
@@ -113,28 +123,35 @@ class Train:
                 for i in range(len(images)):
                     images[i] = images[i].to(self.device).to(torch.float32)
 
-                self.optimizer.zero_grad()
                 loss = self.model(images)
                 self.scaler.scale(loss).backward()
+
+                if ((iteration+1) % self.config["hyper_parameters"]["gradient_accumulation"]) == 0:
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                    self.optimizer.zero_grad()
+
+                    self.print_status(epoch, num_epochs, iteration, loss)
+
+            if ((iteration+1) % self.config["hyper_parameters"]["gradient_accumulation"]) != 0:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
+                self.optimizer.zero_grad()
 
-                self.print_status(epoch, num_epochs, iteration, loss)
-
-            self.save_model()
-        self.save_model()
+            self.save_checkpoint(epoch)
+        self.save_checkpoint("final")
 
     @staticmethod
     def print_status(epoch, num_epochs, iteration, loss):
-        if (iteration % 10) == 0:
-            print("Epoch {:03d}/{:03d} ({:06d}-th iteration) -> loss: {:.7f}".format(
-                epoch+1,
-                num_epochs,
-                iteration,
-                loss.item()
-            ))
+        print("Epoch {:03d}/{:03d} ({:06d}-th iteration) -> loss: {:.7f}".format(
+            epoch+1,
+            num_epochs,
+            iteration,
+            loss.item()
+        ))
 
-    def save_model(self):
-        name = self.config["model"]["features_extractor"]["save_path"]
-        torch.save(self.model.save(), "{}".format(name))
-        print("Saved {}".format(name))
+    def save_checkpoint(self, epoch):
+        if (epoch % 5) == 0 or epoch == "final":
+            name = self.config["model"]["features_extractor"]["save_path"]
+            torch.save(self.model.save(), "{}_{}.{}".format(name, epoch, "pt"))
+            print("Saved {}_{}.{}".format(name, epoch, "pt"))

@@ -14,6 +14,7 @@ from wilds.common.data_loaders import get_train_loader
 
 from src.methods.classifier.model.features_extractor import FeaturesExtractor
 from src.methods.classifier.model.classifier import Classifier
+from src.utils.dataaugmentation.self_standardization import SelfStandardization
 
 
 class Train:
@@ -22,7 +23,7 @@ class Train:
 
         self.device = None
         self.config = None
-        self.data_augmentation = None
+        self.transform = None
         self.train_dataset = None
         self.train_dataloader = None
         self.model = None
@@ -51,8 +52,9 @@ class Train:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def define_transform(self):
-        self.data_augmentation = Compose([
-            ToTensor()
+        self.transform = Compose([
+            ToTensor(),
+            SelfStandardization(),
         ])
 
     def define_dataset(self):
@@ -61,8 +63,9 @@ class Train:
             download=self.config["dataset"]["download"]
         )
         self.train_dataset = dataset.get_subset(
-            split="train",
-            transform=self.data_augmentation,
+            split=self.config["dataset"]["split"],
+            frac=self.config["dataset"]["fraction"],
+            transform=self.transform,
         )
 
     def define_dataloader(self):
@@ -80,7 +83,8 @@ class Train:
         )
         self.model = Classifier(
             features_extractor,
-            self.config["model"]["classifier"]["n_classes"]
+            self.config["model"]["classifier"]["n_classes"],
+            self.config["model"]["classifier"]["weights"]
         )
         self.model.to(self.device)
         self.model.train()
@@ -124,22 +128,24 @@ class Train:
                 loss.backward()
                 self.optimizer.step()
 
-                self.print_status(epoch, num_epochs, iteration, loss)
+                if (iteration % 10) == 0:
+                    self.print_status(epoch, num_epochs, iteration, loss)
 
-            self.save_model()
-        self.save_model()
+            self.save_checkpoint(epoch)
+        self.save_checkpoint("final")
 
     @staticmethod
     def print_status(epoch, num_epochs, iteration, loss):
-        if (iteration % 10) == 0:
-            print("Epoch {:03d}/{:03d} ({:06d}-th iteration) -> loss: {:.7f}".format(
-                epoch+1,
-                num_epochs,
-                iteration,
-                loss.item()
-            ))
+        print("Epoch {:03d}/{:03d} ({:06d}-th iteration) -> loss: {:.7f}".format(
+            epoch+1,
+            num_epochs,
+            iteration,
+            loss.item()
+        ))
 
-    def save_model(self):
-        name = self.config["model"]["classifier"]["save_path"]
-        torch.save(self.model.save(), "{}".format(name))
-        print("Saved {}".format(name))
+    def save_checkpoint(self, epoch):
+        if (epoch % 5) == 0 or epoch == "final":
+            name = self.config["model"]["features_extractor"]["save_path"]
+            torch.save(self.model.save(), "{}_{}.{}".format(name, epoch, "pt"))
+            print("Saved {}_{}.{}".format(name, epoch, "pt"))
+

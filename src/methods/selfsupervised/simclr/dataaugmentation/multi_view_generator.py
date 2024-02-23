@@ -1,4 +1,4 @@
-class DataAugmentation:
+class MultiViewGenerator:
     def __init__(self, transform, n_augmentation=2):
         self.transform = transform
         self.n_augmentation = n_augmentation
