@@ -1,5 +1,6 @@
 name: rxrx1_ssc
 channels:
+  - pyg
   - pytorch
   - nvidia
   - defaults
@@ -10,6 +11,7 @@ dependencies:
   - brotli-python=1.0.9=py38h6a678d5_7
   - bzip2=1.0.8=h7b6447c_0
   - ca-certificates=2023.12.12=h06a4308_0
+  - certifi=2024.2.2=py38h06a4308_0
   - cffi=1.15.1=py38h74dc2b5_0
   - cryptography=41.0.3=py38h130f0dd_0
   - cuda-cudart=11.7.99=0
@@ -26,6 +28,7 @@ dependencies:
   - gmp=6.2.1=h295c915_3
   - gnutls=3.6.15=he1e5248_0
   - intel-openmp=2021.4.0=h06a4308_3561
+  - jinja2=3.1.3=py38h06a4308_0
   - jpeg=9e=h5eee18b_1
   - lame=3.100=h7b6447c_0
   - lcms2=2.12=h3be6417_0
@@ -40,6 +43,8 @@ dependencies:
   - libdeflate=1.17=h5eee18b_1
   - libffi=3.3=he6710b0_2
   - libgcc-ng=11.2.0=h1234567_1
+  - libgfortran-ng=11.2.0=h00389a5_1
+  - libgfortran5=11.2.0=h1234567_1
   - libgomp=11.2.0=h1234567_1
   - libiconv=1.16=h7f8727e_2
   - libidn2=2.3.4=h5eee18b_0
@@ -63,38 +68,37 @@ dependencies:
   - openh264=2.1.1=h4ff587b_0
   - openjpeg=2.4.0=h3ad879b_0
   - openssl=1.1.1w=h7f8727e_0
-  - pip=23.3.1=py38h06a4308_0
+  - platformdirs=3.10.0=py38h06a4308_0
+  - pooch=1.7.0=py38h06a4308_0
   - pycparser=2.21=pyhd3eb1b0_0
+  - pyg=2.4.0=py38_torch_1.13.0_cu117
   - pyopenssl=23.2.0=py38h06a4308_0
   - pysocks=1.7.1=py38h06a4308_0
   - python=3.8.5=h7579374_1
-  - pytorch=1.13.1=py3.8_cuda11.7_cudnn8.5.0_0
   - pytorch-cuda=11.7=h778d358_5
   - pytorch-mutex=1.0=cuda
   - readline=8.2=h5eee18b_0
   - requests=2.31.0=py38h06a4308_0
-  - setuptools=68.2.2=py38h06a4308_0
   - six=1.16.0=pyhd3eb1b0_1
   - sqlite=3.41.2=h5eee18b_0
   - tk=8.6.12=h1ccaba5_0
   - torchaudio=0.13.1=py38_cu117
   - typing_extensions=4.9.0=py38h06a4308_1
-  - wheel=0.41.2=py38h06a4308_0
   - xz=5.4.5=h5eee18b_0
   - zlib=1.2.13=h5eee18b_0
   - zstd=1.5.5=hc292b87_0
   - pip:
-    - certifi==2024.2.2
     - chardet==5.2.0
     - charset-normalizer==3.3.2
     - contourpy==1.1.1
     - cycler==0.12.1
+    - dataclasses==0.6
     - filelock==3.13.1
     - fonttools==4.48.1
     - fsspec==2023.12.2
+    - future==1.0.0
     - idna==3.6
     - importlib-resources==6.1.1
-    - jinja2==3.1.3
     - joblib==1.3.2
     - kiwisolver==1.4.5
     - littleutils==0.2.2
@@ -103,10 +107,14 @@ dependencies:
     - mpmath==1.3.0
     - networkx==3.1
     - numpy==1.24.4
+    - nvidia-cublas-cu11==11.10.3.66
     - nvidia-cublas-cu12==12.1.3.1
     - nvidia-cuda-cupti-cu12==12.1.105
+    - nvidia-cuda-nvrtc-cu11==11.7.99
     - nvidia-cuda-nvrtc-cu12==12.1.105
+    - nvidia-cuda-runtime-cu11==11.7.99
     - nvidia-cuda-runtime-cu12==12.1.105
+    - nvidia-cudnn-cu11==8.5.0.96
     - nvidia-cudnn-cu12==8.9.2.26
     - nvidia-cufft-cu12==11.0.2.54
     - nvidia-curand-cu12==10.3.2.106
@@ -121,7 +129,9 @@ dependencies:
     - packaging==23.2
     - pandas==2.0.3
     - pillow==10.2.0
+    - pip==24.0
     - psutil==5.9.8
+    - pyg-lib==0.4.0+pt21cu118
     - pyparsing==3.1.1
     - python-dateutil==2.8.2
     - pytz==2024.1
@@ -129,14 +139,19 @@ dependencies:
     - scikit-learn==1.3.2
     - scipy==1.10.1
     - seaborn==0.13.2
+    - setuptools==69.0.3
     - sympy==1.12
     - threadpoolctl==3.2.0
-    - torch==2.2.0
-    - torch-geometric==2.4.0
-    - torchvision==0.17.0
+    - torch==1.13.0
+    - torch-cluster==1.6.3+pt21cu118
+    - torch-sparse==0.6.18+pt22cpu
+    - torch-spline-conv==1.2.2+pt21cu118
+    - torcheval==0.0.7
+    - torchvision==0.8.0
     - tqdm==4.66.1
     - triton==2.2.0
     - tzdata==2023.4
     - urllib3==2.2.0
+    - wheel==0.42.0
     - wilds==2.0.0
     - zipp==3.17.0
