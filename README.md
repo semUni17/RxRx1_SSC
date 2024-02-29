@@ -22,7 +22,8 @@ SimCLR code is adapted from https://github.com/sthalles/SimCLR
 
 ## :receipt: Installation
 ```
-https://github.com/semUni17/RxRx1_SSC.git
+git clone https://github.com/semUni17/RxRx1_SSC.git
+cd RxRx1_SSC
 ```
 
 
