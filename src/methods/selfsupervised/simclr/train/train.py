@@ -143,8 +143,8 @@ class Train:
                 self.scaler.update()
                 self.optimizer.zero_grad()
 
-            self.save_checkpoint(epoch)
-        self.save_checkpoint("final")
+            self.checkpoints(epoch)
+        self.checkpoints("final")
 
     @staticmethod
     def print_status(epoch, num_epochs, iteration, loss):

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet50
+from torchvision.models import resnet50, ResNet50_Weights
 
 import numpy as np
 import cv2
@@ -23,7 +23,7 @@ class FeaturesExtractor(nn.Module):
     def define_features_extractor(self):
         if self.weights == "default":
             print("Default pre-trained ResNet50")
-            self.features_extractor = resnet50()
+            self.features_extractor = resnet50(weights=ResNet50_Weights.DEFAULT)
             self.features_extractor.fc = nn.Linear(self.features_extractor.fc.in_features, self.latent_dim, bias=True)
         else:
             print("Custom pre-trained ResNet50")

@@ -45,7 +45,7 @@ class Train:
         self.define_model()
         self.define_optimizer()
 
-        SaveCheckpoints(self.config["model"]["classifier"]["save_path"])
+        self.save_checkpoint = SaveCheckpoints(self.config["model"]["classifier"]["save_path"])
 
     def define_config(self):
         with open(self.config_path, "r") as stream:
@@ -136,8 +136,8 @@ class Train:
                 if (iteration % 10) == 0:
                     self.print_status(epoch, num_epochs, iteration, loss)
 
-            self.save_checkpoint(epoch)
-        self.save_checkpoint("final")
+            self.checkpoints(epoch)
+        self.checkpoints("final")
 
     @staticmethod
     def print_status(epoch, num_epochs, iteration, loss):
