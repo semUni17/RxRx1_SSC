@@ -27,7 +27,7 @@ class FeaturesExtractor(nn.Module):
             self.features_extractor.fc = nn.Linear(self.features_extractor.fc.in_features, self.latent_dim, bias=True)
         else:
             print("Custom pre-trained ResNet50")
-            self.features_extractor = resnet50()
+            self.features_extractor = resnet50(weights=ResNet50_Weights.DEFAULT)
             self.features_extractor.fc = nn.Linear(self.features_extractor.fc.in_features, self.latent_dim, bias=True)
             try:
                 self.features_extractor.load_state_dict(torch.load(self.weights))
