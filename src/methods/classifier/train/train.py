@@ -16,6 +16,8 @@ from src.methods.classifier.model.features_extractor import FeaturesExtractor
 from src.methods.classifier.model.classifier import Classifier
 from src.utils.dataaugmentation.self_standardization import SelfStandardization
 
+from src.utils.checkpoints.save_checkpoints import SaveCheckpoints
+
 
 class Train:
     def __init__(self, config_path: str):
@@ -31,6 +33,7 @@ class Train:
         self.criterion = None
         self.optimizer = None
         self.learning_rate = None
+        self.save_checkpoint = None
 
         self.initialize()
 
@@ -41,6 +44,8 @@ class Train:
         self.define_dataloader()
         self.define_model()
         self.define_optimizer()
+
+        self.save_checkpoint = SaveCheckpoints(self.config["model"]["classifier"]["save_path"])
 
     def define_config(self):
         with open(self.config_path, "r") as stream:
@@ -92,7 +97,7 @@ class Train:
         for n, p in self.model.features_extractor.named_parameters():
             p.requires_grad = False
 
-        '''print("ResNet")
+        '''print("Features Extractor")
         for n, p in self.model.features_extractor.named_parameters():
             print(p.requires_grad, end=" ")
         print()
@@ -131,8 +136,8 @@ class Train:
                 if (iteration % 10) == 0:
                     self.print_status(epoch, num_epochs, iteration, loss)
 
-            self.save_checkpoint(epoch)
-        self.save_checkpoint("final")
+            self.checkpoints(epoch)
+        self.checkpoints("final")
 
     @staticmethod
     def print_status(epoch, num_epochs, iteration, loss):
@@ -143,9 +148,9 @@ class Train:
             loss.item()
         ))
 
-    def save_checkpoint(self, epoch):
-        if (epoch % 5) == 0 or epoch == "final":
-            name = self.config["model"]["features_extractor"]["save_path"]
-            torch.save(self.model.save(), "{}_{}.{}".format(name, epoch, "pt"))
-            print("Saved {}_{}.{}".format(name, epoch, "pt"))
-
+    def checkpoints(self, epoch):
+        if not isinstance(epoch, str):
+            if (epoch % 10) == 0:
+                self.save_checkpoint.save(self.model, epoch)
+        elif epoch == "final":
+            self.save_checkpoint.save(self.model, epoch)

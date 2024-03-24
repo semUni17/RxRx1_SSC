@@ -83,7 +83,7 @@ class Test:
 
     def test(self):
         cell_lines = ["HEPG2", "HUVEC", "RPE", "U2OS"]
-        expriments = [
+        '''expriments = [
             "HEPG2-01", "HEPG2-02", "HEPG2-03", "HEPG2-04","HEPG2-05", "HEPG2-06", "HEPG2-07",
             "HEPG2-08", "HEPG2-09", "HEPG2-10", "HEPG2-11",
             "HUVEC-01", "HUVEC-02", "HUVEC-03", "HUVEC-04", "HUVEC-05", "HUVEC-06", "HUVEC-07",
@@ -91,15 +91,15 @@ class Test:
             "HUVEC-15", "HUVEC-16", "HUVEC-17", "HUVEC-18", "HUVEC-19", "HUVEC-20", "HUVEC-21",
             "HUVEC-22", "HUVEC-23", "HUVEC-24",
             "RPE-01", "RPE-02", "RPE-03", "RPE-04", "RPE-05", "RPE-06", "RPE-07", "RPE-08", "RPE-09", "RPE-10", "RPE-11",
-            "U2OS-01", "U2OS-02", "U2OS-03", "U2OS-04", "U2OS-05"]
-        tsne_visualization = TSNEVisualization(expriments)
+            "U2OS-01", "U2OS-02", "U2OS-03", "U2OS-04", "U2OS-05"]'''
+        tsne_visualization = TSNEVisualization(cell_lines)
         with torch.no_grad():
             for iteration, labeled_batch in enumerate(zip(self.eval_dataloader)):
                 images, y, metadata = labeled_batch[0]
                 image = images.to(self.device)
                 embedding = self.model.encode(image)
                 embedding = embedding.cpu().data
-                labels = metadata[:, 1] #metadata[:, 0]
+                labels = metadata[:, 0] #metadata[:, 1]
                 self.labels.append(labels)
                 self.embedding.append(embedding)
         self.labels = torch.cat(self.labels, dim=0)

@@ -24,6 +24,6 @@ class TSNEVisualization:
             hue=labels,
             hue_order=self.classes,
             legend="full",
-            palette=sns.color_palette("rocket", n_colors=len(self.classes))
+            palette=sns.color_palette("bright", n_colors=len(self.classes)) # rocket
         )
         plt.show()

@@ -11,8 +11,13 @@ from wilds.common.data_loaders import get_train_loader
 from src.methods.classifier.model.features_extractor import FeaturesExtractor
 from src.methods.selfsupervised.simclr.model.projection_head import ProjectionHead
 from src.methods.selfsupervised.simclr.model.simclr import SimCLR
+from src.methods.segmentation.sam.sam import SAM
 from src.methods.selfsupervised.simclr.dataaugmentation.multi_view_generator import MultiViewGenerator
 from src.utils.dataaugmentation.self_standardization import SelfStandardization
+from src.utils.dataaugmentation.to_np_array import ToNPArray
+from src.utils.dataaugmentation.sam_erasing import SAMErasing
+
+from src.utils.checkpoints.save_checkpoints import SaveCheckpoints
 
 
 class Train:
@@ -28,6 +33,7 @@ class Train:
         self.optimizer = None
         self.scheduler = None
         self.scaler = None
+        self.save_checkpoint = None
 
         self.initialize()
 
@@ -39,6 +45,8 @@ class Train:
         self.define_model()
         self.define_optimizer()
 
+        self.save_checkpoint = SaveCheckpoints(self.config["model"]["features_extractor"]["save_path"])
+
     def define_config(self):
         with open(self.config_path, "r") as stream:
             self.config = yaml.safe_load(stream)
@@ -48,18 +56,42 @@ class Train:
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+        torch.multiprocessing.set_start_method("spawn")
+
     def define_transform(self):
         size = self.config["data_augmentation"]["general"]["size"]
         scaler = self.config["data_augmentation"]["color_jitter"]["scaler"]
+
+        sam = SAM(
+            vit_type=self.config["data_augmentation"]["sam_erasing"]["sam"]["vit_type"],
+            weights=self.config["data_augmentation"]["sam_erasing"]["sam"]["weights"],
+            mask_mode=self.config["data_augmentation"]["sam_erasing"]["sam"]["mask_mode"],
+            points_per_side=self.config["data_augmentation"]["sam_erasing"]["sam"]["points_per_side"],
+            points_per_batch=self.config["data_augmentation"]["sam_erasing"]["sam"]["points_per_batch"],
+            pred_iou_thresh=self.config["data_augmentation"]["sam_erasing"]["sam"]["pred_iou_thresh"],
+            box_nms_thresh=self.config["data_augmentation"]["sam_erasing"]["sam"]["box_nms_thresh"],
+            crop_nms_thresh=self.config["data_augmentation"]["sam_erasing"]["sam"]["crop_nms_thresh"],
+            min_mask_region_area=self.config["data_augmentation"]["sam_erasing"]["sam"]["min_mask_region_area"]
+        )
+        sam_erasing = SAMErasing(
+            sam,
+            mask_mode=self.config["data_augmentation"]["sam_erasing"]["mask_mode"],
+            scale=self.config["data_augmentation"]["sam_erasing"]["scale"],
+            kernel_size=self.config["data_augmentation"]["sam_erasing"]["kernel_size"],
+            thresh=self.config["data_augmentation"]["sam_erasing"]["thresh"],
+            min_area=self.config["data_augmentation"]["sam_erasing"]["min_area"],
+            percentage=self.config["data_augmentation"]["sam_erasing"]["percentage"]
+        )
 
         color_jitter = ColorJitter(0.8*scaler, 0.8*scaler, 0.8*scaler, 0.2*scaler)
         gaussian_blur = GaussianBlur(kernel_size=self.config["data_augmentation"]["gaussian_blur"]["kernel_size"])
 
         self.transform = Compose([
+            ToNPArray(),
+            sam_erasing,
             ToTensor(),
             Resize(size=size),
             RandomResizedCrop(size=size),
-            RandomErasing(scale=self.config["data_augmentation"]["erasing"]["scale"]),
             RandomRotation(degrees=self.config["data_augmentation"]["rotation"]["degrees"]),
             RandomHorizontalFlip(),
             RandomVerticalFlip(),
@@ -102,7 +134,7 @@ class Train:
         self.model.train()
 
     def define_optimizer(self):
-        self.optimizer = Adam(
+        self.optimizer = SGD(
             params=self.model.parameters(),
             lr=self.config["hyper_parameters"]["learning_rate"],
             weight_decay=self.config["hyper_parameters"]["weight_decay"]
@@ -119,6 +151,8 @@ class Train:
         num_epochs = self.config["hyper_parameters"]["num_epochs"]
         for epoch in range(num_epochs):
             for iteration, labeled_batch in enumerate(zip(self.train_dataloader)):
+                torch.cuda.empty_cache()
+
                 images, y, metadata = labeled_batch[0]
                 for i in range(len(images)):
                     images[i] = images[i].to(self.device).to(torch.float32)
@@ -133,13 +167,16 @@ class Train:
 
                     self.print_status(epoch, num_epochs, iteration, loss)
 
+                del images, y, metadata, loss
+                torch.cuda.empty_cache()
+
             if ((iteration+1) % self.config["hyper_parameters"]["gradient_accumulation"]) != 0:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.optimizer.zero_grad()
 
-            self.save_checkpoint(epoch)
-        self.save_checkpoint("final")
+            self.checkpoints(epoch)
+        self.checkpoints("final")
 
     @staticmethod
     def print_status(epoch, num_epochs, iteration, loss):
@@ -150,8 +187,9 @@ class Train:
             loss.item()
         ))
 
-    def save_checkpoint(self, epoch):
-        if (epoch % 5) == 0 or epoch == "final":
-            name = self.config["model"]["features_extractor"]["save_path"]
-            torch.save(self.model.save(), "{}_{}.{}".format(name, epoch, "pt"))
-            print("Saved {}_{}.{}".format(name, epoch, "pt"))
+    def checkpoints(self, epoch):
+        if not isinstance(epoch, str):
+            if (epoch % 10) == 0:
+                self.save_checkpoint.save(self.model, epoch)
+        elif epoch == "final":
+            self.save_checkpoint.save(self.model, epoch)
