@@ -14,6 +14,8 @@ from src.methods.selfsupervised.simclr.model.simclr import SimCLR
 from src.methods.selfsupervised.simclr.dataaugmentation.multi_view_generator import MultiViewGenerator
 from src.utils.dataaugmentation.self_standardization import SelfStandardization
 
+from src.utils.checkpoints.save_checkpoints import SaveCheckpoints
+
 
 class Train:
     def __init__(self, config_path: str):
@@ -28,6 +30,7 @@ class Train:
         self.optimizer = None
         self.scheduler = None
         self.scaler = None
+        self.save_checkpoint = None
 
         self.initialize()
 
@@ -38,6 +41,8 @@ class Train:
         self.define_dataloader()
         self.define_model()
         self.define_optimizer()
+
+        self.save_checkpoint = SaveCheckpoints(self.config["model"]["features_extractor"]["save_path"])
 
     def define_config(self):
         with open(self.config_path, "r") as stream:
@@ -102,7 +107,7 @@ class Train:
         self.model.train()
 
     def define_optimizer(self):
-        self.optimizer = Adam(
+        self.optimizer = SGD(
             params=self.model.parameters(),
             lr=self.config["hyper_parameters"]["learning_rate"],
             weight_decay=self.config["hyper_parameters"]["weight_decay"]
@@ -150,8 +155,9 @@ class Train:
             loss.item()
         ))
 
-    def save_checkpoint(self, epoch):
-        if (epoch % 5) == 0 or epoch == "final":
-            name = self.config["model"]["features_extractor"]["save_path"]
-            torch.save(self.model.save(), "{}_{}.{}".format(name, epoch, "pt"))
-            print("Saved {}_{}.{}".format(name, epoch, "pt"))
+    def checkpoints(self, epoch):
+        if not isinstance(epoch, str):
+            if (epoch % 10) == 0:
+                self.save_checkpoint.save(self.model, epoch)
+        elif epoch == "final":
+            self.save_checkpoint.save(self.model, epoch)

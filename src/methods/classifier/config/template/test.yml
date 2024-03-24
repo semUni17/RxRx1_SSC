@@ -15,3 +15,5 @@ dataset:
 hyper_parameters:
   batch_size: 128
   num_workers: 8
+  average: "macro"
+  class_names: ["HEPG2", "HUVEC", "RPE", "U2OS"]

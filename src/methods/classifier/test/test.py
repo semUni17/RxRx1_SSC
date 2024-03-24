@@ -3,17 +3,15 @@ import yaml
 
 import torch
 from torchvision.transforms import *
-from torcheval.metrics import MulticlassAccuracy, MulticlassPrecision, MulticlassRecall, MulticlassF1Score, MulticlassConfusionMatrix
 
 from wilds import get_dataset
 from wilds.common.data_loaders import get_eval_loader
 
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import matplotlib.pyplot as plt
-
 from src.methods.classifier.model.features_extractor import FeaturesExtractor
 from src.methods.classifier.model.classifier import Classifier
 from src.utils.dataaugmentation.self_standardization import SelfStandardization
+
+from src.utils.metrics.metrics import Metrics
 
 
 class Test:
@@ -26,10 +24,7 @@ class Test:
         self.eval_dataset = None
         self.eval_dataloader = None
         self.model = None
-
-        self.y = []
-        self.labels = []
-        self.predictions = []
+        self.metrics = None
 
         self.initialize()
 
@@ -48,6 +43,11 @@ class Test:
             print("{}: {}".format(k, v))
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        self.metrics = Metrics(
+            num_classes=self.config["model"]["classifier"]["n_classes"],
+            average=self.config["hyper_parameters"]["average"]
+        )
 
     def define_transform(self):
         self.transform = Compose([
@@ -88,62 +88,29 @@ class Test:
         self.model.eval()
 
     def test(self):
-        total = 0
-        correct = 0
-        l = []
-        self.metadata = []
-
-        num_classes = self.config["model"]["classifier"]["n_classes"]
-        confusion = MulticlassConfusionMatrix(num_classes=num_classes)
-        accuracy = MulticlassAccuracy(num_classes=num_classes, average="macro")
-        precision = MulticlassPrecision(num_classes=num_classes, average="macro")
-        recall = MulticlassRecall(num_classes=num_classes, average="macro")
-        f1_score = MulticlassF1Score(num_classes=num_classes, average="macro")
-
         with torch.no_grad():
             for iteration, labeled_batch in enumerate(zip(self.eval_dataloader)):
                 images, y, metadata = labeled_batch[0]
                 images = images.to(self.device).to(torch.float32)
                 labels = metadata[:, 0].to(self.device)
 
-                l += metadata[:, 1].tolist()
-
                 predictions = self.model(images)
                 _, predictions = torch.max(predictions.data, dim=1)
-                total += labels.size(0)
-                correct += (predictions == labels).sum()
 
-                manual_accuracy = torch.true_divide(correct, total).item()
-                print("Manual accuracy: {:.3f} %".format(manual_accuracy*100))
+                self.metrics.update(labels, predictions)
+                self.print_metrics(running=True)
 
-                self.labels += labels.cpu()
-                self.predictions += predictions.cpu()
-                self.metadata += metadata
+            self.print_metrics(running=False)
+            self.metrics.plot_confusion_matrix(class_names=self.config["hyper_parameters"]["class_names"])
 
-                accuracy.update(labels, predictions)
-                precision.update(labels, predictions)
-                recall.update(labels, predictions)
-                f1_score.update(labels, predictions)
-                confusion.update(labels, predictions)
+    def print_metrics(self, running=True):
+        metrics = self.metrics.compute()
 
-            a = accuracy.compute()
-            p = precision.compute()
-            r = recall.compute()
-            f1 = f1_score.compute()
-            print("Accuracy: {:.3f} %".format(a*100))
-            print("Precision: {:.3f} %".format(p*100))
-            print("Recall: {:.3f} %".format(r*100))
-            print("F1 score: {:.3f} %".format(f1*100))
-
-            print(len(l), len(set(l)), set(l))
-
-            self.confusion_matrix(confusion.compute())
-
-    def confusion_matrix(self, confusion):
-        cell_lines = ["HEPG2", "HUVEC", "RPE", "U2OS"]
-        cm = confusion_matrix(self.labels, self.predictions)
-        print(cm)
-        cm = confusion.cpu().numpy().astype(np.int32).T
-        display_cm = ConfusionMatrixDisplay(cm, display_labels=cell_lines)
-        display_cm.plot(cmap="YlOrBr")
-        plt.show()
+        if running:
+            print("{}: {:.3f} %".format("standard_accuracy", metrics["standard_accuracy"]*100))
+        else:
+            for k, v in metrics.items():
+                if k != "confusion":
+                    print("{}: {:.3f} %".format(k, v*100))
+                else:
+                    print("{}: {}".format(k, v))
