@@ -13,5 +13,19 @@ dataset:
   fraction: 1.0
 
 hyper_parameters:
-  batch_size: 128
+  batch_size: 64
   num_workers: 8
+  experiments: [
+    "HEPG2-01", "HEPG2-02", "HEPG2-03", "HEPG2-04", "HEPG2-05",
+    "HEPG2-06", "HEPG2-07", "HEPG2-08", "HEPG2-09", "HEPG2-10",
+    "HEPG2-11",
+    "HUVEC-01", "HUVEC-02", "HUVEC-03", "HUVEC-04", "HUVEC-05",
+    "HUVEC-06", "HUVEC-07", "HUVEC-08", "HUVEC-09", "HUVEC-10",
+    "HUVEC-11", "HUVEC-12", "HUVEC-13", "HUVEC-14", "HUVEC-15",
+    "HUVEC-16", "HUVEC-17", "HUVEC-18", "HUVEC-19", "HUVEC-20",
+    "HUVEC-21", "HUVEC-22", "HUVEC-23", "HUVEC-24",
+    "RPE-01", "RPE-02", "RPE-03", "RPE-04", "RPE-05",
+    "RPE-06", "RPE-07", "RPE-08", "RPE-09", "RPE-10",
+    "RPE-11",
+    "U2OS-01", "U2OS-02", "U2OS-03", "U2OS-04", "U2OS-05"
+  ]
